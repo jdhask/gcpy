@@ -46,6 +46,11 @@ def make_ObsPack_Input_netcdfs(sitename: str, lat: int, lon: int, alt: int,
     #  out= Returns list of netcdf files written to outpath for each day in
     #       the time period that  can be used as GEOS Chem inputs.
     #
+    #  NOTE: The output files MUST be named as they are here in order to be
+    #        read in by GEOS-Chem properly. So do NOT change the names.
+    #        The convention is as follows:
+    #        filename = 'obspack_input.YYYYMMDD.nc'
+    #
     # =========================================================================
     #                              Example
     # =========================================================================
@@ -118,17 +123,9 @@ def make_ObsPack_Input_netcdfs(sitename: str, lat: int, lon: int, alt: int,
         prefix = sitename + '_from_' + \
             datestart.split(' ')[0] + '_to_' + dateend.split(' ')[0] + '_n'
             
-        # Old option to make string array for IDS (not char array?)
-        # ids = np.array([(prefix + stri) for stri in n]).astype('|S200')
+        # Make  obspack IDs. 
+        ids = np.array([(prefix + stri) for stri in n]).astype('|S200')
         
-        #  If char array required (we currently think it is.)
-        ids = np.chararray((len(dts), 200))
-        count = 0
-        for stri in n:  # Loop over # of obs and join prefix to obs #, then pad
-            # the sting with underscores to make sure we make 200 chars
-            indv_row = list((prefix + stri).ljust(200, "_"))  # turn into chars
-            ids[count, :] = indv_row  # save IDs in array we pass to xarray.
-            count = count + 1
         
         # ====================================================================
         # =========    Make Big XArray with everything required.      ========
@@ -182,7 +179,7 @@ def make_ObsPack_Input_netcdfs(sitename: str, lat: int, lon: int, alt: int,
             # Dimension is obs #, 200 len string.
             'obspack_id': xr.DataArray(
                 data=ids,
-                dims=['obs', 'string_of_200chars'],
+                dims=['obs'],
                 attrs={
                     "long_name": "Unique ObsPack observation id",
                     "comment": "Unique observation id string that includes obs_id, dataset_id and obspack_num."
@@ -198,9 +195,10 @@ def make_ObsPack_Input_netcdfs(sitename: str, lat: int, lon: int, alt: int,
                     "values": "How to sample model. 1=4-hour avg; 2=1-hour avg; 3=90-min avg; 4=instantaneous"
                 })
         })
-        # Create a unique filename for this specific date's obspack input.
-        filename = 'obspack_' + sitename + '_freq' + \
-            str(samplefreq) + 's.' + str(starts2Use[t]).split(' ')[0] + '.nc'
+        # ====================================================================
+        # NOTE: FILES MUST BE NAMED LIKE THIS IN ORDER TO BE READ IN GEOS CHEM!
+        filename = 'obspack_input.'+ str(starts2Use[t]).split(' ')[0].replace('-', '') + '.nc'
+        # ====================================================================
         
         # Convert our Xarray Data set to a netcdf file w/ this name at outpath
         ds.to_netcdf(outpath + filename)
